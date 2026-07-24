@@ -1,0 +1,51 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  browsers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Contract smoke (no browsers)
+        run: npm run test:contract
+      - name: Playwright + Puppeteer
+        run: |
+          npm run test:playwright
+          npm run test:puppeteer
+
+  selenium:
+    runs-on: ubuntu-latest
+    services:
+      selenium:
+        image: selenium/standalone-chromium:4.27.0
+        ports:
+          - 4444:4444
+        options: >-
+          --shm-size=2g
+          --health-cmd="/opt/bin/check-grid.sh --host 0.0.0.0 --port 4444"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Selenium against the Grid service
+        env:
+          # The GitHub-hosted runner reaches the fixture on its own localhost;
+          # the service container shares the runner's network namespace.
+          SELENIUM_REMOTE_URL: http://localhost:4444
+          SELENIUM_BROWSER_HOST: 127.0.0.1
+        run: npm run test:selenium

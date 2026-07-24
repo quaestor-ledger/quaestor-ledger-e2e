@@ -1,0 +1,22 @@
+# Local Selenium Grid that mirrors the cluster's dd-selenium-server browser image
+# (selenium/standalone-chromium:4.27.0). Bring it up with `npm run selenium:up`,
+# then run the Selenium suite with SELENIUM_REMOTE_URL=http://localhost:4444.
+services:
+  selenium:
+    image: selenium/standalone-chromium:4.27.0
+    shm_size: "2gb"
+    ports:
+      - "4444:4444" # WebDriver / Grid
+      - "7900:7900" # noVNC (watch the browser at http://localhost:7900)
+    environment:
+      SE_NODE_MAX_SESSIONS: "2"
+      SE_NODE_OVERRIDE_MAX_SESSIONS: "true"
+      SE_NODE_SESSION_TIMEOUT: "300"
+    # Lets the containerized browser reach a fixture served on the host's localhost.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "/opt/bin/check-grid.sh", "--host", "0.0.0.0", "--port", "4444"]
+      interval: 5s
+      timeout: 5s
+      retries: 20

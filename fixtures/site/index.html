@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quaestor Ledger</title>
+    <meta name="description" content="Quaestor Ledger — an auditable, multi-runtime accounting ledger." />
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        line-height: 1.5;
+      }
+      header, main, footer { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+      h1 { font-size: 2rem; margin: 0 0 0.5rem; }
+      .tagline { opacity: 0.8; margin: 0 0 1.5rem; }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+      .card { border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 10px; padding: 1rem; }
+      .card h2 { font-size: 1.1rem; margin: 0 0 0.35rem; }
+      footer { border-top: 1px solid rgba(128, 128, 128, 0.25); opacity: 0.85; }
+      [data-testid="status"] { font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Quaestor Ledger</h1>
+      <p class="tagline">An auditable, multi-runtime accounting ledger.</p>
+    </header>
+
+    <main>
+      <section class="cards" aria-label="Features">
+        <article class="card">
+          <h2>Double-entry core</h2>
+          <p>Every posting balances; the ledger proves it.</p>
+        </article>
+        <article class="card">
+          <h2>Multi-runtime clients</h2>
+          <p>Rust, Flutter, and TypeScript speak the same protocol.</p>
+        </article>
+        <article class="card">
+          <h2>Optimistic sync</h2>
+          <p>Client writes reconcile against Supabase and Postgres.</p>
+        </article>
+        <article class="card">
+          <h2>Cross-language schemas</h2>
+          <p>One JSON Schema validates every language binding.</p>
+        </article>
+      </section>
+
+      <section>
+        <button type="button" id="ping" data-testid="ping">Ping ledger</button>
+        <output data-testid="status">idle</output>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        &copy; Quaestor Ledger. Source on
+        <a href="https://github.com/quaestor-ledger">GitHub</a>.
+      </p>
+    </footer>
+
+    <script>
+      // Minimal, error-free interactivity so the "no console errors" scenario is
+      // meaningful (a real regression that logs to console would fail the suite).
+      document.getElementById('ping').addEventListener('click', () => {
+        document.querySelector('[data-testid="status"]').textContent = 'ok';
+      });
+    </script>
+  </body>
+</html>
