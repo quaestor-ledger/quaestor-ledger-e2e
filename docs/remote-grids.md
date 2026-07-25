@@ -70,19 +70,60 @@ responsive scenarios run for real against the deployed site.
 *local* fixture from a container). An external `E2E_BASE_URL` is passed through
 untouched, so no host rewriting applies when targeting the deployed site.
 
-## Verified result (AWS `dd-ec2-admin`, 2026-07-25)
+## Verified result — both clouds (2026-07-25)
 
-Driving `dd-selenium-server`'s Grid (Chrome 131, Linux) against
-`https://quaestor-ledger.github.io`: **20 passed, 12 skipped** (fixture-only), and
-**2 real findings on the deployed site** — the suite is doing its job:
+Driving each cluster's `dd-selenium-server` Grid (Chrome 131, Linux) against
+`https://quaestor-ledger.github.io`, and cross-checked with the local Playwright
+(Chromium/Firefox/WebKit) and Puppeteer drivers. **Every driver, engine, and
+cluster agreed: 20 passed, 12 skipped (fixture-only), 2 failed.**
 
-1. **Missing `<header>` landmark** — the deployed page has no `<header>` (scenario
-   "renders header, main, and footer landmarks").
-2. **Heading hierarchy skips a level** — headings jump past a level (scenario
-   "uses a heading hierarchy that starts at h1 and skips no level").
+| Context | Grid drives a session | Suite result |
+|---|---|---|
+| AWS EC2 (`dd-ec2-admin`) | ✅ | 20 pass / 12 skip / 2 fail |
+| Hetzner (`dd-k8s-fsn1`) | ✅ | 20 pass / 12 skip / 2 fail |
+| Playwright ×3 + Puppeteer (local) | ✅ | 20 pass / 12 skip / 2 fail each |
 
-These are defects in the deployed site, not the suite; they are left failing on
-purpose (weakening the scenarios would hide a real accessibility regression).
+The **2 failures are real defects on the deployed site**, not the suite (left
+failing on purpose — weakening the scenarios would hide a real regression):
+
+1. **Missing `<header>` landmark** — "renders header, main, and footer landmarks".
+2. **Heading hierarchy skips a level** — "uses a heading hierarchy that starts at
+   h1 and skips no level".
+
+### Hetzner caveat: the Grid works, the `/run` API sidecar is broken
+
+On Hetzner the `dd-selenium-server` pod is `1/2` (`CrashLoopBackOff`): the
+**`selenium` Grid container is healthy** (it created a Chrome 131 session for the
+run above), but the **`selenium-api` sidecar** (the Java `/run` DSL on `:8105`)
+crash-loops with:
+
+```
+/bin/bash: line 2: cd: /opt/dd-next-1/remote/deployments/selenium-server: No such file or directory
+```
+
+The sidecar self-builds from a hostPath repo that is populated on the AWS node but
+**not present at `/opt/dd-next-1` on the Hetzner nodes**. Because our suite drives
+the raw Grid over `RemoteWebDriver` (via `kubectl port-forward` to the pod, which
+bypasses the Service and the pod's `Ready` gate), the broken sidecar does **not**
+affect Selenium e2e — but the `/run` API and the `:8105` Service endpoint are down
+on Hetzner until the hostPath source is provisioned (or the sidecar is rebuilt as
+an image instead of a hostPath Maven build). This is a cluster-repo/GitOps fix in
+`ores/k8s-cluster`, not a change to this suite.
+
+### Reaching the Hetzner Grid
+
+No Hetzner kube context is in the local kubeconfig; reach it over SSH through the
+control-plane node and forward the pod Grid to your laptop in one hop:
+
+```bash
+ssh -L 4446:localhost:4444 dd-k8s-fsn1 \
+  'P=$(sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n default \
+        get pods -o name | grep dd-selenium-server | head -1); \
+   exec sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n default \
+        port-forward $P 4444:4444'
+# then:  SELENIUM_REMOTE_URL=http://localhost:4446 \
+#          E2E_BASE_URL=https://quaestor-ledger.github.io npm run test:selenium
+```
 
 ## Playwright / Puppeteer against the cluster
 
