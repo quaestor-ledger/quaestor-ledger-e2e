@@ -82,6 +82,26 @@ export async function createPuppeteerDriver() {
       await page.click(selector);
     },
 
+    async fill(selector, value) {
+      const handle = await firstHandle(selector);
+      if (!handle) {
+        throw new Error(`no element matched ${selector}`);
+      }
+      // Select any existing text (triple click) then type over it, so the
+      // element's input events fire the same way a user's would.
+      await handle.click({ clickCount: 3 });
+      if (value === '') {
+        await page.keyboard.press('Backspace');
+      } else {
+        await handle.type(value);
+      }
+    },
+
+    async press(selector, key) {
+      await page.focus(selector);
+      await page.keyboard.press(key);
+    },
+
     async waitForText(selector, expected, { timeoutMs = navigationTimeoutMs } = {}) {
       await page.waitForFunction(
         (sel, text) => {
@@ -92,6 +112,14 @@ export async function createPuppeteerDriver() {
         selector,
         expected,
       );
+    },
+
+    async setViewport(width, height) {
+      await page.setViewport({ width, height });
+    },
+
+    async evaluate(expression) {
+      return page.evaluate(expression);
     },
 
     resetConsole() {

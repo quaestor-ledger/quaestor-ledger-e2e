@@ -1,7 +1,21 @@
-import { Builder, By, until, logging } from 'selenium-webdriver';
+import { Builder, By, Key, until, logging } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 
 import { headed, navigationTimeoutMs, seleniumRemoteURL, seleniumTargetURL } from '../config.mjs';
+
+// Maps the cross-driver key names scenarios use (Playwright/Puppeteer naming)
+// onto Selenium's Key constants. Single printable characters pass through.
+const KEY_MAP = {
+  Enter: Key.RETURN,
+  Tab: Key.TAB,
+  Escape: Key.ESCAPE,
+  Backspace: Key.BACK_SPACE,
+  Delete: Key.DELETE,
+  ArrowDown: Key.ARROW_DOWN,
+  ArrowUp: Key.ARROW_UP,
+  ArrowLeft: Key.ARROW_LEFT,
+  ArrowRight: Key.ARROW_RIGHT,
+};
 
 /**
  * Selenium driver: W3C WebDriver behaviour, for parity with Selenium-based
@@ -102,12 +116,51 @@ export async function createSeleniumDriver() {
       await drainBrowserLogs();
     },
 
+    async fill(selector, value) {
+      const element = await first(selector);
+      if (!element) {
+        throw new Error(`no element matched ${selector}`);
+      }
+      await element.clear();
+      if (value !== '') {
+        await element.sendKeys(value);
+      }
+      // chromedriver's clear() does not emit an input event, so a listener-driven
+      // UI would miss a cleared field. Dispatch input/change so fill() notifies
+      // listeners exactly like the Playwright and Puppeteer adapters do.
+      await driver.executeScript(
+        'arguments[0].dispatchEvent(new Event("input", { bubbles: true }));' +
+          'arguments[0].dispatchEvent(new Event("change", { bubbles: true }));',
+        element,
+      );
+    },
+
+    async press(selector, key) {
+      const element = await first(selector);
+      if (!element) {
+        throw new Error(`no element matched ${selector}`);
+      }
+      await element.sendKeys(KEY_MAP[key] ?? key);
+      await drainBrowserLogs();
+    },
+
     async waitForText(selector, expected, { timeoutMs = navigationTimeoutMs } = {}) {
       const element = await first(selector);
       if (!element) {
         throw new Error(`no element matched ${selector}`);
       }
       await driver.wait(until.elementTextContains(element, expected), timeoutMs);
+    },
+
+    async setViewport(width, height) {
+      // Selenium sizes the OS window; in headless Chromium the window size and
+      // the viewport are effectively the same, which is close enough for
+      // responsive-layout scenarios.
+      await driver.manage().window().setRect({ width, height });
+    },
+
+    async evaluate(expression) {
+      return driver.executeScript(`return (${expression});`);
     },
 
     resetConsole() {

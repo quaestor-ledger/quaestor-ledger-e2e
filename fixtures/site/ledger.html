@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ledger — Quaestor Ledger</title>
+    <meta name="description" content="A sample double-entry ledger view for Quaestor Ledger end-to-end tests." />
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        line-height: 1.5;
+      }
+      header, main, footer { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+      nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 1rem; padding: 0; margin: 0.5rem 0 0; }
+      h1 { font-size: 2rem; margin: 0 0 0.5rem; }
+      table { border-collapse: collapse; width: 100%; }
+      caption { text-align: left; opacity: 0.8; margin-bottom: 0.5rem; }
+      th, td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 0.5rem 0.75rem; text-align: left; }
+      td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+      footer { border-top: 1px solid rgba(128, 128, 128, 0.25); opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Ledger</h1>
+      <p class="tagline">A worked double-entry example.</p>
+      <nav aria-label="Primary">
+        <ul>
+          <li><a href="index.html" data-testid="nav-home">Home</a></li>
+          <li><a href="ledger.html" data-testid="nav-ledger" aria-current="page">Ledger</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <section aria-labelledby="entries-heading">
+        <h2 id="entries-heading">Recent entries</h2>
+        <table data-testid="entries">
+          <caption>Every debit has an equal and opposite credit.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Entry</th>
+              <th scope="col">Account</th>
+              <th scope="col">Debit</th>
+              <th scope="col">Credit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Opening balance</td>
+              <td>Cash</td>
+              <td class="amount">1,000.00</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr>
+              <td>Opening balance</td>
+              <td>Equity</td>
+              <td class="amount">—</td>
+              <td class="amount">1,000.00</td>
+            </tr>
+            <tr>
+              <td>Invoice #1</td>
+              <td>Accounts receivable</td>
+              <td class="amount">250.00</td>
+              <td class="amount">—</td>
+            </tr>
+            <tr>
+              <td>Invoice #1</td>
+              <td>Revenue</td>
+              <td class="amount">—</td>
+              <td class="amount">250.00</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        &copy; Quaestor Ledger. Source on
+        <a href="https://github.com/quaestor-ledger">GitHub</a>.
+      </p>
+    </footer>
+  </body>
+</html>

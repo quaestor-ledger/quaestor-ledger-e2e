@@ -41,8 +41,13 @@ export function defineDriverSuite(driverName, createDriver, { skip } = {}) {
 
     try {
       for (const scenario of scenarios) {
-        await t.test(scenario.name, async () => {
-          await scenario.check(driver, { baseURL: target.baseURL });
+        await t.test(scenario.name, async (subtest) => {
+          const context = { baseURL: target.baseURL };
+          if (scenario.applicable && !(await scenario.applicable(driver, context))) {
+            subtest.skip('not applicable to this target');
+            return;
+          }
+          await scenario.check(driver, context);
         });
       }
     } finally {

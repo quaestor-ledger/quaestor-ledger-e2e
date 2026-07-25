@@ -81,6 +81,15 @@ When driving a remote Grid against a **localhost** fixture, the browser runs in
 a container and cannot resolve the host's `localhost`; the adapter rewrites the
 base URL host to `host.docker.internal` (override with `SELENIUM_BROWSER_HOST`).
 
+> **Docker Desktop on macOS:** the Chromium image resolves `host.docker.internal`
+> via `/etc/hosts`, but the browser's own DNS resolver can still report
+> `ERR_NAME_NOT_RESOLVED` for it. If the whole Selenium suite fails at navigation,
+> pass the gateway IP directly — find it with
+> `docker exec <grid-container> getent hosts host.docker.internal` (typically
+> `192.168.65.254`) and run with `SELENIUM_BROWSER_HOST=192.168.65.254`. In CI the
+> Grid is a service container sharing the runner's network, so
+> `SELENIUM_BROWSER_HOST=127.0.0.1` is used instead.
+
 ## Environment variables
 
 | Variable | Default | Purpose |

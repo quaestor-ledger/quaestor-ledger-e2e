@@ -58,8 +58,24 @@ export async function createPlaywrightDriver() {
       await page.locator(selector).first().click();
     },
 
+    async fill(selector, value) {
+      await page.locator(selector).first().fill(value);
+    },
+
+    async press(selector, key) {
+      await page.locator(selector).first().press(key);
+    },
+
     async waitForText(selector, expected, { timeoutMs = navigationTimeoutMs } = {}) {
       await page.locator(selector).filter({ hasText: expected }).first().waitFor({ timeout: timeoutMs });
+    },
+
+    async setViewport(width, height) {
+      await page.setViewportSize({ width, height });
+    },
+
+    async evaluate(expression) {
+      return page.evaluate(expression);
     },
 
     resetConsole() {

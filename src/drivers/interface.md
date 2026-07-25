@@ -19,7 +19,12 @@ Driver {
   attribute(cssSelector, name) -> Promise<string | null>
   visible(cssSelector) -> Promise<boolean>        // first match visible?
   click(cssSelector) -> Promise<void>
+  fill(cssSelector, value) -> Promise<void>       // replace an input's value, firing input events ('' clears it)
+  press(cssSelector, key) -> Promise<void>        // focus the element and press one key (e.g. 'Enter', 'Tab', 'a')
   waitForText(cssSelector, expected, { timeoutMs? }) -> Promise<void>
+
+  setViewport(width, height) -> Promise<void>     // Selenium sizes the window (≈ viewport headless)
+  evaluate(expressionString) -> Promise<unknown>  // evaluate a JS *expression* in the page
 
   resetConsole() -> void                          // drop console errors captured so far
   consoleErrors() -> string[]                     // SEVERE/error console output since last reset
@@ -27,6 +32,10 @@ Driver {
   close() -> Promise<void>
 }
 ```
+
+Scenarios may also declare `applicable(driver, ctx) -> Promise<boolean>`; the
+harness skips the scenario (with a reason) when it returns false, which is how
+fixture-only interactivity avoids failing against the deployed site.
 
 Adapters normalise driver-specific quirks (Selenium browser-log capability,
 Puppeteer visibility checks, host rewriting for a remote Grid) so scenarios stay

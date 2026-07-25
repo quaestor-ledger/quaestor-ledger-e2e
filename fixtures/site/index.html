@@ -14,43 +14,82 @@
         line-height: 1.5;
       }
       header, main, footer { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+      .brand { display: flex; align-items: center; gap: 0.6rem; }
+      .brand img { display: block; }
+      nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 1rem; padding: 0; margin: 0.5rem 0 0; }
       h1 { font-size: 2rem; margin: 0 0 0.5rem; }
+      h2 { font-size: 1.35rem; margin: 1.5rem 0 0.75rem; }
       .tagline { opacity: 0.8; margin: 0 0 1.5rem; }
+      .filter { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0 0 1rem; }
+      .filter input { flex: 1 1 12rem; min-width: 0; max-width: 100%; padding: 0.4rem 0.6rem; }
       .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
       .card { border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 10px; padding: 1rem; }
-      .card h2 { font-size: 1.1rem; margin: 0 0 0.35rem; }
+      .card[hidden] { display: none; }
+      .card h3 { font-size: 1.1rem; margin: 0 0 0.35rem; }
       footer { border-top: 1px solid rgba(128, 128, 128, 0.25); opacity: 0.85; }
       [data-testid="status"] { font-variant-numeric: tabular-nums; }
     </style>
   </head>
   <body>
     <header>
-      <h1>Quaestor Ledger</h1>
+      <div class="brand">
+        <img
+          src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='32'%20height='32'%3E%3Ccircle%20cx='16'%20cy='16'%20r='14'%20fill='%234f46e5'/%3E%3C/svg%3E"
+          alt="Quaestor Ledger logo"
+          width="32"
+          height="32"
+        />
+        <h1>Quaestor Ledger</h1>
+      </div>
       <p class="tagline">An auditable, multi-runtime accounting ledger.</p>
+      <nav aria-label="Primary">
+        <ul>
+          <li><a href="index.html" data-testid="nav-home" aria-current="page">Home</a></li>
+          <li><a href="ledger.html" data-testid="nav-ledger">Ledger</a></li>
+        </ul>
+      </nav>
     </header>
 
     <main>
-      <section class="cards" aria-label="Features">
-        <article class="card">
-          <h2>Double-entry core</h2>
-          <p>Every posting balances; the ledger proves it.</p>
-        </article>
-        <article class="card">
-          <h2>Multi-runtime clients</h2>
-          <p>Rust, Flutter, and TypeScript speak the same protocol.</p>
-        </article>
-        <article class="card">
-          <h2>Optimistic sync</h2>
-          <p>Client writes reconcile against Supabase and Postgres.</p>
-        </article>
-        <article class="card">
-          <h2>Cross-language schemas</h2>
-          <p>One JSON Schema validates every language binding.</p>
-        </article>
+      <section class="features" aria-labelledby="features-heading">
+        <h2 id="features-heading">Features</h2>
+
+        <form class="filter" role="search" data-testid="filter-form">
+          <label for="filter-input">Filter features</label>
+          <input
+            id="filter-input"
+            data-testid="filter"
+            type="search"
+            aria-label="Filter features"
+            placeholder="Filter features…"
+          />
+          <output data-testid="filter-count">4 shown</output>
+        </form>
+
+        <div class="cards" aria-label="Feature list">
+          <article class="card">
+            <h3>Double-entry core</h3>
+            <p>Every posting balances; the ledger proves it.</p>
+          </article>
+          <article class="card">
+            <h3>Multi-runtime clients</h3>
+            <p>Rust, Flutter, and TypeScript speak the same protocol.</p>
+          </article>
+          <article class="card">
+            <h3>Optimistic sync</h3>
+            <p>Client writes reconcile against Supabase and Postgres.</p>
+          </article>
+          <article class="card">
+            <h3>Cross-language schemas</h3>
+            <p>One JSON Schema validates every language binding.</p>
+          </article>
+        </div>
       </section>
 
-      <section>
+      <section aria-labelledby="health-heading">
+        <h2 id="health-heading">Health</h2>
         <button type="button" id="ping" data-testid="ping">Ping ledger</button>
+        <button type="button" id="reset" data-testid="reset">Reset</button>
         <output data-testid="status">idle</output>
       </section>
     </main>
@@ -65,9 +104,36 @@
     <script>
       // Minimal, error-free interactivity so the "no console errors" scenario is
       // meaningful (a real regression that logs to console would fail the suite).
+      const status = document.querySelector('[data-testid="status"]');
       document.getElementById('ping').addEventListener('click', () => {
-        document.querySelector('[data-testid="status"]').textContent = 'ok';
+        status.textContent = 'ok';
       });
+      document.getElementById('reset').addEventListener('click', () => {
+        status.textContent = 'idle';
+      });
+
+      // Client-side feature filter: hides non-matching cards and reports the
+      // visible count. Submitting must not navigate away.
+      const filter = document.querySelector('[data-testid="filter"]');
+      const filterCount = document.querySelector('[data-testid="filter-count"]');
+      const cards = Array.from(document.querySelectorAll('.card'));
+      const applyFilter = () => {
+        const query = filter.value.trim().toLowerCase();
+        let shown = 0;
+        for (const card of cards) {
+          const match = card.textContent.toLowerCase().includes(query);
+          card.hidden = !match;
+          if (match) shown += 1;
+        }
+        filterCount.textContent = shown + ' shown';
+      };
+      filter.addEventListener('input', applyFilter);
+      document
+        .querySelector('[data-testid="filter-form"]')
+        .addEventListener('submit', (event) => {
+          event.preventDefault();
+          applyFilter();
+        });
     </script>
   </body>
 </html>
