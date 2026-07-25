@@ -90,25 +90,49 @@ failing on purpose — weakening the scenarios would hide a real regression):
 2. **Heading hierarchy skips a level** — "uses a heading hierarchy that starts at
    h1 and skips no level".
 
-### Hetzner caveat: the Grid works, the `/run` API sidecar is broken
+### Hetzner: resolved — and why it broke (a standing fragility)
 
-On Hetzner the `dd-selenium-server` pod is `1/2` (`CrashLoopBackOff`): the
-**`selenium` Grid container is healthy** (it created a Chrome 131 session for the
-run above), but the **`selenium-api` sidecar** (the Java `/run` DSL on `:8105`)
-crash-loops with:
+**Current state (re-verified 2026-07-25 14:47Z): Hetzner is fully healthy.** Both
+`dd-selenium-server` pods are `2/2 Running` with 0 restarts, `/healthz` on `:8105`
+returns `{"ok":true,...}`, and the Service has both endpoints
+(`10.244.1.120:8105`, `10.244.2.58:8105`). The suite re-run through the
+now-healthy pod returned the same **23 pass / 12 skip / 0 fail**.
+
+Earlier the same day the pod was stuck at `1/2` (`CrashLoopBackOff`, 6,600+
+restarts over 23 days): the **Grid container was healthy** but the `selenium-api`
+sidecar died instantly with
 
 ```
 /bin/bash: line 2: cd: /opt/dd-next-1/remote/deployments/selenium-server: No such file or directory
 ```
 
-The sidecar self-builds from a hostPath repo that is populated on the AWS node but
-**not present at `/opt/dd-next-1` on the Hetzner nodes**. Because our suite drives
-the raw Grid over `RemoteWebDriver` (via `kubectl port-forward` to the pod, which
-bypasses the Service and the pod's `Ready` gate), the broken sidecar does **not**
-affect Selenium e2e — but the `/run` API and the `:8105` Service endpoint are down
-on Hetzner until the hostPath source is provisioned (or the sidecar is rebuilt as
-an image instead of a hostPath Maven build). This is a cluster-repo/GitOps fix in
-`ores/k8s-cluster`, not a change to this suite.
+**Why:** the sidecar is a `maven:3.9.9` base image that *self-builds the shaded jar
+at container start* from a **hostPath** mount —
+
+```yaml
+volumes:
+  - name: repo
+    hostPath: { path: /home/ec2-user/codes/dd/dd-next-1, type: Directory }
+```
+
+That directory existed on the Hetzner nodes (they mirror the `ec2-user` layout, so
+the mount succeeded and the pod started) but its
+`remote/deployments/selenium-server` subtree had not been provisioned — so the
+build step `cd`'d into nothing. It was fixed out-of-band by populating that path on
+the nodes; the new ReplicaSet then built the jar in ~24s and came up clean.
+
+> **Standing fragility, not yet fixed.** The sidecar's source is delivered by
+> **out-of-band node provisioning, not by GitOps** — ArgoCD syncs the Deployment
+> but cannot sync the hostPath contents, and `type: Directory` only asserts the
+> *top* directory exists, so an incomplete tree fails at runtime rather than at
+> mount time. Any re-imaged or added node reintroduces this. The durable fix is to
+> bake the jar into an image (a `Dockerfile` already exists beside the `pom.xml`)
+> instead of a hostPath Maven build at start-up. That change belongs in
+> `ores/k8s-cluster`, not this suite.
+
+Note this never blocked Selenium e2e: our suite drives the raw Grid via
+`kubectl port-forward` to the **pod**, which bypasses both the Service and the
+pod's `Ready` gate, so it worked even while the sidecar was crash-looping.
 
 ### Reaching the Hetzner Grid
 
