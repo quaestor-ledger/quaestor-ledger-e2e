@@ -5,6 +5,11 @@ scenario set runs identically across **Playwright**, **Puppeteer**, and
 **Selenium**, so a UI regression is caught the same way regardless of driver and
 any cross-driver behavioural gap surfaces as a single failing driver.
 
+Playwright drives three **engines** from the same scenarios — **Chromium**,
+**Firefox** (Gecko), and **WebKit** — so the suite is cross-browser as well as
+cross-driver. Firefox/WebKit suites skip cleanly when their binaries are not
+installed (`npm run browsers:install` fetches all three).
+
 ```
 scenarios/index.mjs             one canonical scenario set (driver-agnostic)
 src/drivers/                    playwright.mjs · puppeteer.mjs · selenium.mjs adapters
@@ -25,9 +30,11 @@ a Grid caps concurrent sessions).
 ## Quick start
 
 ```bash
-npm install                 # also runs `playwright install chromium`
+npm install                 # also runs `playwright install chromium firefox webkit`
 npm run test:contract       # browser-free HTML smoke (no browsers needed)
-npm run test:playwright     # Playwright vs the bundled fixture
+npm run test:playwright     # Playwright: Chromium + Firefox + WebKit
+npm run test:firefox        # just the Firefox (Gecko) engine
+npm run test:webkit         # just the WebKit engine
 npm run test:puppeteer      # Puppeteer vs the bundled fixture
 
 # Selenium needs a Grid — start the local one (same image as the cluster):

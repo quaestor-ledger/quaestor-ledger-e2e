@@ -1,15 +1,25 @@
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 
 import { headed, navigationTimeoutMs } from '../config.mjs';
 
-/** Playwright driver: first-class auto-waiting; the happy-path default. */
-export async function createPlaywrightDriver() {
-  // Playwright has a legacy feature that routes chromium.launch through a
-  // Selenium Grid when SELENIUM_REMOTE_URL is set. That variable is ours (it
-  // configures the *Selenium suite*), so clear it here — each test file runs in
-  // its own process, so this cannot leak into the Selenium suite.
+const ENGINES = { chromium, firefox, webkit };
+
+/**
+ * Playwright driver: first-class auto-waiting; the happy-path default. Drives
+ * Chromium by default; pass `{ browserName: 'firefox' | 'webkit' }` to run the
+ * same shared scenarios on the other engines for cross-browser coverage.
+ */
+export async function createPlaywrightDriver({ browserName = 'chromium' } = {}) {
+  // Playwright has a legacy feature that routes launch through a Selenium Grid
+  // when SELENIUM_REMOTE_URL is set. That variable is ours (it configures the
+  // *Selenium suite*), so clear it here — each test file runs in its own
+  // process, so this cannot leak into the Selenium suite.
   delete process.env.SELENIUM_REMOTE_URL;
-  const browser = await chromium.launch({ headless: !headed });
+  const engine = ENGINES[browserName];
+  if (!engine) {
+    throw new Error(`unknown Playwright browser: ${browserName}`);
+  }
+  const browser = await engine.launch({ headless: !headed });
   const context = await browser.newContext();
   const page = await context.newPage();
 

@@ -14,12 +14,14 @@
     "test:playwright": "node --test tests/browser/playwright/*.test.mjs",
     "test:puppeteer": "node --test tests/browser/puppeteer/*.test.mjs",
     "test:selenium": "node --test tests/browser/selenium/*.test.mjs",
+    "test:firefox": "node --test tests/browser/playwright/firefox.test.mjs",
+    "test:webkit": "node --test tests/browser/playwright/webkit.test.mjs",
     "fixture": "node scripts/serve-fixture.mjs",
-    "browsers:install": "playwright install chromium",
+    "browsers:install": "playwright install chromium firefox webkit",
     "selenium:up": "docker compose -f docker-compose.selenium.yml up -d --wait",
     "selenium:down": "docker compose -f docker-compose.selenium.yml down",
     "selenium:cluster": "bash scripts/cluster-selenium.sh",
-    "postinstall": "playwright install chromium || true"
+    "postinstall": "playwright install chromium firefox webkit || true"
   },
   "dependencies": {
     "playwright": "1.56.0",

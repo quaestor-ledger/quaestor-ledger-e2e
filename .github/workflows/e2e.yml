@@ -15,9 +15,11 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Install browser system dependencies (Firefox/WebKit need libs)
+        run: npx playwright install-deps
       - name: Contract smoke (no browsers)
         run: npm run test:contract
-      - name: Playwright + Puppeteer
+      - name: Playwright (Chromium + Firefox + WebKit) and Puppeteer
         run: |
           npm run test:playwright
           npm run test:puppeteer
