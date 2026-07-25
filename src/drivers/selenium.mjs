@@ -73,6 +73,20 @@ export async function createSeleniumDriver() {
       return { status: undefined };
     },
 
+    async back() {
+      await driver.navigate().back();
+      // navigate().back() does not wait for the document; settle it ourselves so
+      // the shared scenarios can read the page immediately, like the other drivers.
+      await driver.wait(async () => (await driver.executeScript('return document.readyState;')) === 'complete', navigationTimeoutMs);
+      await drainBrowserLogs();
+    },
+
+    async forward() {
+      await driver.navigate().forward();
+      await driver.wait(async () => (await driver.executeScript('return document.readyState;')) === 'complete', navigationTimeoutMs);
+      await drainBrowserLogs();
+    },
+
     async title() {
       return driver.getTitle();
     },

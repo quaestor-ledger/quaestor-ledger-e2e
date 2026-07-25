@@ -12,6 +12,8 @@ Driver {
 
   goto(url, { waitUntil? }) -> Promise<{ status: number | undefined }>
       // status is undefined for Selenium (W3C WebDriver exposes no response code)
+  back() -> Promise<void>                         // history back, settled to a loaded document
+  forward() -> Promise<void>                       // history forward, settled to a loaded document
 
   title() -> Promise<string>
   count(cssSelector) -> Promise<number>

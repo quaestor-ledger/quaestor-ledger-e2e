@@ -40,6 +40,14 @@ export async function createPuppeteerDriver() {
       return { status: response ? response.status() : undefined };
     },
 
+    async back() {
+      await page.goBack({ waitUntil: 'domcontentloaded', timeout: navigationTimeoutMs });
+    },
+
+    async forward() {
+      await page.goForward({ waitUntil: 'domcontentloaded', timeout: navigationTimeoutMs });
+    },
+
     async title() {
       return page.title();
     },

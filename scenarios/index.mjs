@@ -488,4 +488,26 @@ export const scenarios = [
       }
     },
   },
+  {
+    name: 'browser history back and forward move between pages',
+    async applicable(driver, { baseURL }) {
+      await driver.goto(baseURL);
+      return (await driver.count('[data-testid="nav-ledger"]')) > 0;
+    },
+    async check(driver, { baseURL }) {
+      const ledgerURL = new URL('ledger.html', baseURL).href;
+      try {
+        await driver.goto(baseURL);
+        assert.equal(await driver.text('h1'), 'Quaestor Ledger');
+        await driver.goto(ledgerURL);
+        assert.equal(await driver.text('h1'), 'Ledger');
+        await driver.back();
+        assert.equal(await driver.text('h1'), 'Quaestor Ledger', 'expected back() to return home');
+        await driver.forward();
+        assert.equal(await driver.text('h1'), 'Ledger', 'expected forward() to return to the ledger');
+      } finally {
+        await driver.goto(baseURL);
+      }
+    },
+  },
 ];

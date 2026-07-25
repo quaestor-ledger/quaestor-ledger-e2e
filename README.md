@@ -112,4 +112,11 @@ base URL host to `host.docker.internal` (override with `SELENIUM_BROWSER_HOST`).
 Add one entry to `scenarios/index.mjs`. It runs on all three drivers
 automatically — write it once against the driver interface documented in
 [`src/drivers/interface.md`](src/drivers/interface.md); do not branch on
-`driver.name`.
+`driver.name`. See [docs/writing-scenarios.md](docs/writing-scenarios.md) for the
+full guide.
+
+## Documentation
+
+In-depth docs live in [`docs/`](docs/): architecture, writing scenarios,
+the cross-browser/cross-driver matrix and its normalisations, running against the
+remote cluster Grids (AWS / Hetzner), and the coverage catalogue.
