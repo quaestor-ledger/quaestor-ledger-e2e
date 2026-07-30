@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+# This repo is public, so the default token grant is worth being explicit
+# about: the suites only ever read the checkout. Nothing here publishes, so
+# no job needs more than `contents: read`. Declaring it at the top level means
+# a future job inherits the floor instead of the repo-wide default.
+permissions:
+  contents: read
+
 jobs:
   browsers:
     runs-on: ubuntu-latest
