@@ -40,6 +40,7 @@ jobs:
           - 4444:4444
         options: >-
           --shm-size=2g
+          --add-host=host.docker.internal:host-gateway
           --health-cmd="/opt/bin/check-grid.sh --host 0.0.0.0 --port 4444"
           --health-interval=5s
           --health-timeout=5s
@@ -54,7 +55,7 @@ jobs:
       - name: Selenium against the Grid service
         env:
           # The GitHub-hosted runner reaches the fixture on its own localhost;
-          # the service container shares the runner's network namespace.
+          # the containerized browser reaches it through Docker's host gateway.
           SELENIUM_REMOTE_URL: http://localhost:4444
-          SELENIUM_BROWSER_HOST: 127.0.0.1
+          SELENIUM_BROWSER_HOST: host.docker.internal
         run: npm run test:selenium

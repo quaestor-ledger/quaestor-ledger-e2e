@@ -50,10 +50,20 @@ export async function startFixtureServer({ host = '127.0.0.1', port = 0 } = {}) 
   });
 
   const address = server.address();
-  const baseURL = `http://${host}:${address.port}`;
+  // Wildcard listen addresses are not valid navigation targets. Advertise a
+  // stable loopback URL; remote-driver adapters can rewrite it to their
+  // explicit host-gateway address without changing local-driver behavior.
+  const advertisedHost = ['0.0.0.0', '::'].includes(host)
+    ? '127.0.0.1'
+    : host;
+  const urlHost = advertisedHost.includes(':')
+    ? `[${advertisedHost}]`
+    : advertisedHost;
+  const baseURL = `http://${urlHost}:${address.port}`;
 
   return {
     baseURL,
+    listenAddress: address.address,
     async close() {
       await new Promise((resolve) => server.close(resolve));
     },
