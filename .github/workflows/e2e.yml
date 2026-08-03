@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
@@ -40,12 +42,15 @@ jobs:
           - 4444:4444
         options: >-
           --shm-size=2g
+          --add-host=host.docker.internal:host-gateway
           --health-cmd="/opt/bin/check-grid.sh --host 0.0.0.0 --port 4444"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
@@ -54,7 +59,7 @@ jobs:
       - name: Selenium against the Grid service
         env:
           # The GitHub-hosted runner reaches the fixture on its own localhost;
-          # the service container shares the runner's network namespace.
+          # the containerized browser reaches it through Docker's host gateway.
           SELENIUM_REMOTE_URL: http://localhost:4444
-          SELENIUM_BROWSER_HOST: 127.0.0.1
+          SELENIUM_BROWSER_HOST: host.docker.internal
         run: npm run test:selenium
