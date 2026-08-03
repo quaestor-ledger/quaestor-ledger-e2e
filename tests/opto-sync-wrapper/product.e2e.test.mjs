@@ -26,6 +26,13 @@ const {
   engineVersion,
 } = sdk ?? {};
 
+const CANONICAL_DECIMAL = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
+
+function assertCanonicalDecimalString(value, label) {
+  assert.equal(typeof value, 'string', `${label} must be a decimal string`);
+  assert.match(value, CANONICAL_DECIMAL, `${label} must be canonical base-10 decimal text`);
+}
+
 async function deleteDatabase(name) {
   await new Promise((resolve) => {
     const request = indexedDB.deleteDatabase(name);
@@ -166,5 +173,198 @@ test(
     assert.equal(winner.deletedAt, 200);
     assert.equal(winner.value, null);
     assert.match(String(engineVersion()), /^\d+\.\d+\.\d+/);
+  },
+);
+
+test(
+  'Quaestor exposes only reviewed ledger metadata and canonical decimal-string money',
+  { skip: NO_SYNC },
+  () => {
+    assert.deepEqual(
+      [...profile.collections].sort(),
+      ['audit_metadata', 'conflicts', 'ledger_snapshots', 'sync_checkpoints'],
+    );
+    const forbiddenCollections = new Set([
+      'bank_accounts',
+      'card_data',
+      'collection_commands',
+      'money_movement_instructions',
+      'payment_credentials',
+      'posting_commands',
+      'processor_tokens',
+      'raw_provider_payloads',
+      'settlement_secrets',
+      'transfer_instructions',
+    ]);
+    assert.equal(
+      profile.collections.some((collection) =>
+        forbiddenCollections.has(collection),
+      ),
+      false,
+    );
+    assert.ok(
+      profile.domainGuards.some((guard) =>
+        guard.includes('sync never moves money'),
+      ),
+    );
+    assert.ok(
+      profile.domainGuards.some((guard) =>
+        guard.includes('canonical decimal strings'),
+      ),
+    );
+    assert.ok(
+      profile.domainGuards.some((guard) =>
+        guard.includes('account, tenant, audit, role, and conflict-escalation'),
+      ),
+    );
+
+    assert.doesNotThrow(() => assertCanonicalDecimalString('0.00', 'zero'));
+    assert.doesNotThrow(() => assertCanonicalDecimalString('1250.00', 'amount'));
+    assert.throws(() => assertCanonicalDecimalString(1250, 'numeric amount'), /decimal string/);
+    assert.throws(() => assertCanonicalDecimalString('01.00', 'leading-zero amount'), /canonical/);
+    assert.throws(() => assertCanonicalDecimalString('1e3', 'exponent amount'), /canonical/);
+  },
+);
+
+test(
+  'ledger snapshot and conflict mutations sharing an id remain tenant and collection isolated',
+  { skip: NO_SYNC },
+  async (t) => {
+    const databaseName =
+      `opto-quaestor-financial-${profile.repository.replaceAll('/', '-')}`;
+    const recordId = 'ledger-record-42';
+    const tenantId = 'tenant-42';
+
+    await deleteDatabase(databaseName);
+    t.after(() => deleteDatabase(databaseName));
+
+    const snapshot = {
+      id: recordId,
+      tenantId,
+      accountId: 'account-42',
+      currency: 'USD',
+      debitBalance: '1250.00',
+      creditBalance: '1250.00',
+      revision: 7,
+      updatedAt: 700,
+    };
+    const conflict = {
+      id: recordId,
+      tenantId,
+      collection: 'ledger_snapshots',
+      recordId,
+      baseRevision: 6,
+      serverRevision: 7,
+      reason: 'stale_base',
+      localAmount: '1250.00',
+      serverAmount: '1250.00',
+      updatedAt: 701,
+    };
+    for (const [label, value] of Object.entries({
+      debitBalance: snapshot.debitBalance,
+      creditBalance: snapshot.creditBalance,
+      localAmount: conflict.localAmount,
+      serverAmount: conflict.serverAmount,
+    })) {
+      assertCanonicalDecimalString(value, label);
+    }
+
+    const client = await openClient(databaseName);
+    const snapshotMutationId = await client.queueMutation(
+      'ledger_snapshots',
+      recordId,
+      snapshot,
+    );
+    const conflictMutationId = await client.queueMutation(
+      'conflicts',
+      recordId,
+      conflict,
+    );
+    assert.notEqual(snapshotMutationId, conflictMutationId);
+
+    const firstPush = await client.protocolPushRequest();
+    const replayedPush = await client.protocolPushRequest();
+    const projection = (request) =>
+      request.mutations.map((mutation) => ({
+        mutationId: mutation.mutationId,
+        recordId: mutation.recordId,
+        table: mutation.table,
+      }));
+    assert.deepEqual(projection(replayedPush), projection(firstPush));
+    assert.deepEqual(
+      new Set(firstPush.mutations.map((mutation) => mutation.table)),
+      new Set(['ledger_snapshots', 'conflicts']),
+    );
+
+    client.db.close();
+    const reopened = new OptoSyncClient({
+      databaseName,
+      stampUpdatedAt: false,
+    });
+    const afterRestart = await reopened.pendingMutations();
+    assert.equal(afterRestart.length, 2);
+    for (const mutation of afterRestart) {
+      assert.equal(JSON.parse(mutation.jsonPayload).tenantId, tenantId);
+    }
+
+    await reopened.markMutation(snapshotMutationId, SYNC_STATUS.SYNCED);
+    const remaining = await reopened.pendingMutations();
+    assert.equal(remaining.length, 1);
+    assert.equal(remaining[0].tableName, 'conflicts');
+    assert.equal(JSON.parse(remaining[0].jsonPayload).reason, 'stale_base');
+    reopened.db.close();
+  },
+);
+
+test(
+  'server-authoritative posted and reversed ledger state defeats stale drafts',
+  { skip: NO_SYNC },
+  async () => {
+    if (typeof initOptoSync === 'function') await initOptoSync();
+
+    const staleDraft = {
+      id: 'transaction-42',
+      tenantId: 'tenant-42',
+      status: 'draft',
+      totalDebit: '1250.00',
+      totalCredit: '1250.00',
+      immutable: false,
+      updatedAt: 400,
+    };
+    const authoritativePosting = {
+      id: 'transaction-42',
+      tenantId: 'tenant-42',
+      status: 'posted',
+      totalDebit: '1250.00',
+      totalCredit: '1250.00',
+      postedAt: 500,
+      immutable: true,
+      updatedAt: 500,
+    };
+    let winner = reconcileIncoming(staleDraft, authoritativePosting);
+    assert.equal(winner.status, 'posted');
+    assert.equal(winner.immutable, true);
+
+    const authoritativeReversal = {
+      ...authoritativePosting,
+      status: 'reversed',
+      reversalTransactionId: 'transaction-43',
+      reversedAt: 600,
+      updatedAt: 600,
+    };
+    winner = reconcileIncoming(authoritativePosting, authoritativeReversal);
+    assert.equal(winner.status, 'reversed');
+    assert.equal(winner.reversalTransactionId, 'transaction-43');
+    assertCanonicalDecimalString(winner.totalDebit, 'reversed totalDebit');
+    assertCanonicalDecimalString(winner.totalCredit, 'reversed totalCredit');
+
+    const staleResurrection = {
+      ...staleDraft,
+      updatedAt: 550,
+    };
+    assert.deepEqual(
+      reconcileIncoming(authoritativeReversal, staleResurrection),
+      authoritativeReversal,
+    );
   },
 );
