@@ -34,9 +34,13 @@ jobs:
           node - <<'NODE'
           const lock = require('./package-lock.json');
           const entry = lock.packages?.['node_modules/ip-address'];
-          if (!entry || entry.version !== '10.3.1') {
-            throw new Error(`expected ip-address 10.3.1, got ${entry?.version ?? 'missing'}`);
+          const version = entry?.version ?? '0.0.0';
+          const [major, minor, patch] = version.split('.').map(Number);
+          const secure = major > 10 || (major === 10 && (minor > 3 || (minor === 3 && patch >= 1)));
+          if (!secure) {
+            throw new Error(`expected ip-address >=10.3.1, got ${entry?.version ?? 'missing'}`);
           }
+          console.log(`validated secure ip-address ${version}`);
           NODE
           npm ci --ignore-scripts
           npm audit --audit-level=high
@@ -51,5 +55,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add package-lock.json
-          git commit -m 'fix(deps): update ip-address to 10.3.1'
+          git commit -m 'fix(deps): update vulnerable ip-address lock entry'
           git push origin "HEAD:${GITHUB_HEAD_REF}"
