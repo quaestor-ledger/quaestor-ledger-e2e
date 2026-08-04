@@ -4,35 +4,40 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
-# This repo is public, so the default token grant is worth being explicit
-# about: the suites only ever read the checkout. Nothing here publishes, so
-# no job needs more than `contents: read`. Declaring it at the top level means
-# a future job inherits the floor instead of the repo-wide default.
 permissions:
   contents: read
+
+concurrency:
+  group: legacy-e2e-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   browsers:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: '22'
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
           cache: npm
-      - run: npm ci
-      - name: Install browser system dependencies (Firefox/WebKit need libs)
-        run: npx playwright install-deps
-      - name: Contract smoke (no browsers)
+      - run: npm ci --ignore-scripts
+      - name: Install pinned browser engines and system dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Contract smoke
         run: npm run test:contract
-      - name: Playwright (Chromium + Firefox + WebKit) and Puppeteer
+      - name: Playwright and Puppeteer matrix
         run: |
           npm run test:playwright
           npm run test:puppeteer
 
   selenium:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       selenium:
         image: selenium/standalone-chromium:4.27.0
@@ -46,17 +51,16 @@ jobs:
           --health-timeout=5s
           --health-retries=20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: '22'
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Selenium against the Grid service
         env:
-          # The test process runs on the hosted runner while Chromium runs in a
-          # Docker service. The explicit host-gateway mapping above gives the
-          # remote browser a stable route back to the runner-hosted fixture.
           SELENIUM_REMOTE_URL: http://localhost:4444
           SELENIUM_BROWSER_HOST: host.docker.internal
         run: npm run test:selenium
