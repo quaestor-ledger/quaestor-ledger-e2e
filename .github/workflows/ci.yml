@@ -94,7 +94,10 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Start Selenium Grid
         run: npm run selenium:up
-      - name: Selenium scenarios
+      - name: Selenium scenarios through RemoteWebDriver
+        env:
+          SELENIUM_REMOTE_URL: http://localhost:4444
+          SELENIUM_BROWSER_HOST: host.docker.internal
         run: npm run test:selenium
       - name: Collect Selenium logs
         if: failure()
