@@ -16,9 +16,20 @@ const CONTENT_TYPES = {
 
 /**
  * Boots the bundled Quaestor-shaped fixture site on an ephemeral port.
+ *
+ * A remote Selenium browser runs in a container, so the fixture must listen on
+ * a host interface reachable from that container rather than loopback only.
+ * The public URL intentionally remains loopback-shaped: seleniumTargetURL()
+ * rewrites it to SELENIUM_BROWSER_HOST for the remote browser, while local
+ * Playwright/Puppeteer sessions continue to use 127.0.0.1.
+ *
  * Returns the base URL and a close() that resolves when the socket is freed.
  */
-export async function startFixtureServer({ host = '127.0.0.1', port = 0 } = {}) {
+export async function startFixtureServer({
+  host = process.env.SELENIUM_REMOTE_URL ? '0.0.0.0' : '127.0.0.1',
+  publicHost = host === '0.0.0.0' ? '127.0.0.1' : host,
+  port = 0,
+} = {}) {
   const server = createServer(async (request, response) => {
     try {
       const requestUrl = new URL(request.url, 'http://placeholder');
@@ -50,7 +61,7 @@ export async function startFixtureServer({ host = '127.0.0.1', port = 0 } = {}) 
   });
 
   const address = server.address();
-  const baseURL = `http://${host}:${address.port}`;
+  const baseURL = `http://${publicHost}:${address.port}`;
 
   return {
     baseURL,
