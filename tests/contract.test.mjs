@@ -4,6 +4,13 @@ import test from 'node:test';
 import { resolveTarget } from '../src/harness.mjs';
 import { ORG_URL, PRODUCT_NAME, MIN_FEATURE_CARDS } from '../scenarios/index.mjs';
 
+function attributeValues(html, attribute) {
+  const values = [];
+  const pattern = new RegExp(`\\b${attribute}\\s*=\\s*["']([^"']+)["']`, 'gi');
+  for (const match of html.matchAll(pattern)) values.push(match[1]);
+  return values;
+}
+
 // A browser-free smoke of the target's HTML contract. Runs without Playwright,
 // Puppeteer, or a Grid, so CI can gate on it before the heavier driver suites.
 test('target HTML satisfies the Quaestor landing-page contract', async (t) => {
@@ -49,6 +56,43 @@ test('target HTML satisfies the Quaestor landing-page contract', async (t) => {
       assert.equal(count, 1, `expected exactly one <h1>, found ${count}`);
     });
 
+    await t.test('does not embed insecure HTTP assets', () => {
+      const assetUrls = [
+        ...attributeValues(html, 'src'),
+        ...attributeValues(html, 'href'),
+      ];
+      const insecure = assetUrls.filter((value) => /^http:\/\//i.test(value));
+      assert.deepEqual(insecure, [], `found insecure asset URLs: ${insecure.join(', ')}`);
+    });
+
+    await t.test('external links are protected against opener access', () => {
+      const externalLinks = [...html.matchAll(/<a\b([^>]*)>/gi)]
+        .map((match) => match[1])
+        .filter((attrs) => /target\s*=\s*["']_blank["']/i.test(attrs));
+
+      for (const attrs of externalLinks) {
+        const rel = /rel\s*=\s*["']([^"']+)["']/i.exec(attrs)?.[1] ?? '';
+        assert.match(rel, /\bnoopener\b/i, `target=_blank link missing noopener: ${attrs}`);
+        assert.match(rel, /\bnoreferrer\b/i, `target=_blank link missing noreferrer: ${attrs}`);
+      }
+    });
+
+    await t.test('images include non-empty alt text', () => {
+      for (const match of html.matchAll(/<img\b([^>]*)>/gi)) {
+        const alt = /\balt\s*=\s*["']([^"']*)["']/i.exec(match[1]);
+        assert.ok(alt, `image is missing alt text: ${match[0]}`);
+        assert.ok(alt[1].trim().length > 0, `image has empty alt text: ${match[0]}`);
+      }
+    });
+
+    await t.test('page has a main landmark', () => {
+      assert.match(html, /<main(?:\s|>)/i);
+    });
+
+    await t.test('response does not expose a server implementation header', () => {
+      assert.equal(response.headers.get('x-powered-by'), null);
+    });
+
     // Fixture-only: the bundled site ships a second page. The deployed target
     // does not, so this is gated on the nav marker and skipped otherwise.
     await t.test('the ledger page is reachable and lists entries', async (st) => {
@@ -62,6 +106,7 @@ test('target HTML satisfies the Quaestor landing-page contract', async (t) => {
       const ledgerHtml = await ledger.text();
       assert.match(ledgerHtml, /Recent entries/i);
       assert.match(ledgerHtml, /<table[\s>]/i);
+      assert.match(ledgerHtml, /<caption[\s>]/i, 'ledger table should have a caption');
     });
   } finally {
     await target.close();
