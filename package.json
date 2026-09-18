@@ -21,7 +21,9 @@
     "selenium:up": "docker compose -f docker-compose.selenium.yml up -d --wait",
     "selenium:down": "docker compose -f docker-compose.selenium.yml down",
     "selenium:cluster": "bash scripts/cluster-selenium.sh",
-    "postinstall": "playwright install chromium firefox webkit || true"
+    "postinstall": "playwright install chromium firefox webkit || true",
+    "lint:ores": "if [ -f .ores-lint/lint.sh ]; then sh .ores-lint/lint.sh; else echo 'ores-lint not installed'; fi",
+    "prepublishOnly": "npm run lint:ores"
   },
   "dependencies": {
     "playwright": "1.56.0",
@@ -30,5 +32,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.7.0"
+  },
+  "oresLint": {
+    "note": "Declared, not installed. ores-lint resolves these from a global install - see .ores-lint/README.md",
+    "requires": {
+      "eslint": ">=9",
+      "typescript-eslint": ">=8 (optional; without it .ts files are skipped)"
+    },
+    "install": "npm i -g eslint typescript-eslint"
   }
 }
