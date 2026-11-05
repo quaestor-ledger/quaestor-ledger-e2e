@@ -23,7 +23,8 @@
     "selenium:cluster": "bash scripts/cluster-selenium.sh",
     "postinstall": "playwright install chromium firefox webkit || true",
     "lint:ores": "if [ -f .ores-lint/lint.sh ]; then sh .ores-lint/lint.sh; else echo 'ores-lint not installed'; fi",
-    "prepublishOnly": "npm run lint:ores"
+    "prepublishOnly": "npm run lint:ores",
+    "test:live-api": "node --test --test-timeout=60000 tests/live-api-boundary.test.mjs"
   },
   "dependencies": {
     "playwright": "1.56.0",
