@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { startFixtureServer } from '../src/fixture-server.mjs';
 
-const timeout = { signal: AbortSignal.timeout(4000) };
+const timeout = () => ({ signal: AbortSignal.timeout(4000) });
 
 function cents(cell) {
   const text = cell.trim();
@@ -30,13 +30,13 @@ test('home-to-ledger navigation crosses a real HTTP listener with a balanced jou
   { timeout: 12_000 }, async (t) => {
     const fixture = await startFixtureServer();
     t.after(() => fixture.close());
-    const home = await fetch(fixture.baseURL + '/', timeout);
+    const home = await fetch(fixture.baseURL + '/', timeout());
     assert.equal(home.status, 200);
     const landing = await home.text();
     assert.match(landing, /<h1>Quaestor Ledger<\/h1>/);
     assert.match(landing, /href="ledger\.html"/, 'landing page must link to the ledger');
 
-    const response = await fetch(fixture.baseURL + '/ledger.html', timeout);
+    const response = await fetch(fixture.baseURL + '/ledger.html', timeout());
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-type') ?? '', /^text\/html/i);
     const html = await response.text();
@@ -70,14 +70,14 @@ test('parallel readers observe immutable ledger bytes and no reflected query inp
     const queries = Array.from({ length: 16 }, (_, i) =>
       '/ledger.html?' + new URLSearchParams({ marker: i % 2 ? '<script>not-trusted</script>' : String(i) }));
     const responses = await Promise.all(queries.map(async (path) => {
-      const response = await fetch(fixture.baseURL + path, timeout);
+      const response = await fetch(fixture.baseURL + path, timeout());
       assert.equal(response.status, 200);
       return response.text();
     }));
     assert.ok(responses.every((html) => html === responses[0]), 'query data changed immutable fixture output');
     assert.equal(responses[0].includes('<script>not-trusted</script>'), false);
     assert.equal(journal(responses[0]).length, 4);
-    const missing = await fetch(fixture.baseURL + '/not-a-ledger.html', timeout);
+    const missing = await fetch(fixture.baseURL + '/not-a-ledger.html', timeout());
     assert.equal(missing.status, 404);
     assert.equal((await missing.text()).includes('Opening balance'), false);
   });
